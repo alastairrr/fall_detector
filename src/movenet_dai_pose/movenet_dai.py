@@ -10,6 +10,7 @@
  *  > Year: 2023
  *  > References: 
  *      [1] https://github.com/geaxgx/depthai_movenet
+ *      [2] https://doi.org/10.3390/app11010329
  *
  * ===========================================================================
  *
@@ -36,13 +37,34 @@ class MovenetDAI:
 
     _MODEL_FILE_PATH = "models/movenet_singlepose_thunder_U8_transpose.blob"
     _CROP_REGION = namedtuple('CropRegion',['xmin', 'ymin', 'xmax',  'ymax', 'size']) # All values are in pixel. The region is a square of size 'size' pixels
+    
+    # Dictionary that maps from joint names to keypoint indices. 
+    KEYPOINT_DICT = {
+        'nose': 0,
+        #'left_eye': 1,
+        #'right_eye': 2,
+        #'left_ear': 3,
+        #'right_ear': 4,
+        'left_shoulder': 1,
+        'right_shoulder': 2,
+        'left_elbow': 3,
+        'right_elbow': 4,
+        'left_wrist': 5,
+        'right_wrist': 6,
+        'left_hip': 7,
+        'right_hip': 8,
+        'left_knee': 9,
+        'right_knee': 10,
+        'left_ankle': 11,
+        'right_ankle': 12
+    }
 
 
     # ---- Constructor ---- #
     def __init__(self, 
-                 pose_score_threshold=0.3,
-                 internal_fps=15,
-                 internal_frame_height=640
+                 pose_score_threshold: float=0.25,
+                 internal_fps: int=15,
+                 internal_frame_height: int=640
                  ) -> None:
 
         self.internal_fps = internal_fps
@@ -83,21 +105,39 @@ class MovenetDAI:
         return frame, inference
 
 
-    def normalize(self, inference):
-        # TODO: must ignore if kp is nan
-
-        # NOTE: centres data, gets rid of uncessary kps
-        keypoints_norm=inference[:,[1,0]]
-
-        pass
-
-
-    def renderKeyPoints(self, frame, inference) -> None:
-        keypoints_norm=inference[:,[1,0]]
-        keypoints = np.array([self.crop_region.xmin, self.crop_region.ymin]) + keypoints_norm * self.crop_region.size
+    def normalize(self, data: np.ndarray) -> np.ndarray:
         """
-        for idx,x_y in enumerate(keypoints):
-            if x_y[0] and x_y[1] != np.nan:
+         *
+         * Relative normalization algorithm. Normalizes pose to centre and removes of unnecessary head keypoints (keypoints 1 -> 4). 
+         * Returns: normalized keypoints array (np.ndarray)
+         * Adapted from References[2]
+         *
+         * """
+        
+        keypoints_norm = np.concatenate((data[0:1], data[5:17])) #original: keypoints_norm = np.append(data[0,[1,0]] + data[5:17,[1,0]])
+        x_centre = 0.5
+        y_centre = 0.5
+
+        hip_midpoint_x = (keypoints_norm[self.KEYPOINT_DICT['right_hip']][1] + keypoints_norm[self.KEYPOINT_DICT['left_hip']][1]) * 0.5
+        hip_midpoint_y = (keypoints_norm[self.KEYPOINT_DICT['right_hip']][0] + keypoints_norm[self.KEYPOINT_DICT['left_hip']][0]) * 0.5
+        x_dis = hip_midpoint_x - x_centre
+        y_dis = hip_midpoint_y - y_centre
+
+        for idx, x_y in enumerate(keypoints_norm):
+            if x_y[0] != 0 and x_y[1] != 0:
+                keypoints_norm[idx][1] = x_y[1] - x_dis
+                keypoints_norm[idx][0] = x_y[0] - y_dis
+
+        return keypoints_norm 
+
+
+    def renderKeyPoints(self, frame: np.ndarray, data: np.ndarray) -> None:
+        keypoints_norm=data[:,[1,0]]
+        keypoints = (np.array([self.crop_region.xmin, self.crop_region.ymin]) + keypoints_norm * self.crop_region.size).astype(np.int32)
+
+        for idx, x_y in enumerate(keypoints):
+            # [0 is y, 1 is x]
+            if x_y[0] != 0 and x_y[1] != 0:
                 if idx % 2 == 1:
                     color = (0,255,0) 
                 elif idx == 0:
@@ -105,17 +145,6 @@ class MovenetDAI:
                 else:
                     color = (0,0,255)
                 cv2.circle(frame, (x_y[0], x_y[1]), 4, color, -11)
-
-        """       
-        for idx,x_y in enumerate(keypoints):
-            if not (np.isnan(x_y[0]) and np.isnan(x_y[1])):
-                if idx % 2 == 1:
-                    color = (0,255,0) 
-                elif idx == 0:
-                    color = (0,255,255)
-                else:
-                    color = (0,0,255)
-                cv2.circle(frame, (int(x_y[0]), int(x_y[1])), 4, color, -11)
 
 
     # ---- Private Methods ---- #
@@ -199,26 +228,29 @@ class MovenetDAI:
         return frame, inference
 
 
-    def _post_process_data(self, data) -> np.ndarray:
+    def _post_process_data(self, data: dai.NNData) -> np.ndarray:
         keypoints = np.array(data.getLayerFp16('Identity')).reshape(-1,3)
         confidence_scores = keypoints[:,2]
 
         for idx, score in enumerate(confidence_scores):
             if score < self.pose_score_threshold:
-                keypoints[idx][0] = keypoints[idx][1] = np.nan
+                keypoints[idx][0] = keypoints[idx][1] = 0.0
                 
         return keypoints
 
 
-    def _find_isp_scale_params(self, size, is_height=True) -> tuple[int, set[int, int]]:
+    def _find_isp_scale_params(self, size, is_height: bool=True) -> tuple[int, set[int, int]]:
         """
-        Algorithm from References[1]
+         *
+         * Find closest valid size close to 'size' and and the corresponding parameters to setIspScale()
+         * This function is useful to work around a bug in depthai where ImageManip is scrambling images that have an invalid size
+         * is_height : boolean that indicates if the value is the height or the width of the image
+         * Returns: valid size, (numerator, denominator)
+         *
+         * Algorithm from References[1]
+         *
+         * """
 
-        Find closest valid size close to 'size' and and the corresponding parameters to setIspScale()
-        This function is useful to work around a bug in depthai where ImageManip is scrambling images that have an invalid size
-        is_height : boolean that indicates if the value is the height or the width of the image
-        Returns: valid size, (numerator, denominator)
-        """
         # We want size >= 288
         if size < 288:
             size = 288
