@@ -2,3 +2,4 @@ opencv-python>=4.5.1.48
 depthai>=2.9
 matplotlib
 numpy
+tensorflow>=2.9.0
