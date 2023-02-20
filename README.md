@@ -44,7 +44,8 @@ for j in range(iter_range[0],iter_range[1],iter_range[2]):
     frame, data, _ = movenet.getFrameInference() # Runs MoveNet HPE on image frame
     normalized = movenet.normalize(data) # Normalizes HPE data using above section's normalization method
 
-    # After this, the program saves the data of the normalized + flattened MoveNet HPE Inferences to a numpy (.npy) file format for the LSTM network training
+    # After this, the program saves the data of the normalized + flattened MoveNet HPE Inferences to a 
+    # numpy (.npy) file format for the LSTM network training
 ```
 
 ## Install
