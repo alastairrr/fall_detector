@@ -17,14 +17,16 @@ Model Validation Dataset: UR Fall Detection Dataset
 
 ## Normalization
 Normalisation algorithm involves moving the HPE skeleton to the centre of the frame to reduce bias inflicted by horizontal movements when training the LSTM network.
-![Normalization](doc/img/draw2.jpg)
+![Normalization](doc/img/draw2.png)
 
 ## Pre-Processing
 UR Fall Detection Dataset contained inconsistent amount of frames, this needed to be shrinked to 55 frames to fit the network. The algorithm used to shrink to 55 frames involved finding a range (start, stop, step) for an iterator to scan through for an even spread of frames while keeping the length of 55 total frames.
-![Data Preprocessing](doc/img/draw3.jpg)
+![Data Preprocessing](doc/img/draw3.png)
 
 This algorithm is found in extract_pose_data.py:
 ```py
+# numFrames is an arbitrary number of frames (more than 55) that needs to be shrinked to 55.
+# algorithm returns a range which the length is always 55 with constant time complexity.
 iter_range = ()
 if numFrames == 55:
     iter_range = (1, 56,1)
