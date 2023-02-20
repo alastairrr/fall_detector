@@ -1,0 +1,1 @@
+from .fall_lstm import LSTMFallDetector
