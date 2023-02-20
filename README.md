@@ -26,7 +26,8 @@ UR Fall Detection Dataset contained inconsistent amount of frames, this needed t
 This algorithm is found in extract_pose_data.py:
 ```py
 # numFrames is an arbitrary number of frames (more than 55) that needs to be shrinked to 55.
-# algorithm returns a range which the length is always 55 with constant time complexity.
+# algorithm returns a tuple range which the length is always 55 with constant time complexity.
+
 iter_range = ()
 if numFrames == 55:
     iter_range = (1, 56,1)
@@ -34,7 +35,16 @@ else:
     step = numFrames // 55
     split = ((numFrames // step) - 55) // 2
     iter_range = (split, numFrames - (numFrames - 55 * step) + split, step)
-count = 0
+```
+
+This tuple range can then be used to ensure the HPE skeletal-inferencing is only performed on 55 frames of a data sample:
+```py
+for j in range(iter_range[0],iter_range[1],iter_range[2]):
+    movenet.updateInputPath(file_path)
+    frame, data, _ = movenet.getFrameInference() # Runs MoveNet HPE on image frame
+    normalized = movenet.normalize(data) # Normalizes HPE data using above section's normalization method
+
+    # After this, the program saves the data of the normalized + flattened MoveNet HPE Inferences to a numpy (.npy) file format for the LSTM network training
 ```
 
 ## Install
