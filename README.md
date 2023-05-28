@@ -1,6 +1,8 @@
 # Fall Detection From MoveNet Pose Estimation with OAK-D Hardware
 LSTM based fall detection model with MoveNet pose estimation via OAK-D hardware and DepthAI.
 
+(More work to be done)
+
 ## Demo
 ![Demo](doc/img/demo.gif)
 Note: This demo was trained with self-generated dataset. The current trained weights for demo.py uses UR Fall Detection Dataset and may not match in average precision. Inferencing was delayed by approx. 1 second due to high memory consumption from screen recording application (OBS).
