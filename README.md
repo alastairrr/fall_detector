@@ -5,7 +5,8 @@ Latest Update: Trained with NTU-RGB Action Recognition Dataset.
 
 ## Demo
 ![Demo](doc/img/lstmfall_sample_2763_08252019.gif)
-Normali
+Left represents pipeline in action, right represents the normalized skeleton the model sees.
+
 Note: This demo was trained with NTU-RGB Action Recognition Dataset in attempt to increase robustness. The current trained weights for demo.py uses src\fall_detection\model_weights\ntu_weights.h5
 
 Dataset: NTU-RGB Action Recognition (~ 55k samples, ~1000 of which are falls).
