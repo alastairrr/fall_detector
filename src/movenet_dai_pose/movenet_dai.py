@@ -62,7 +62,7 @@ class MovenetDAI:
     # ---- Constructor ---- #
     def __init__(self, 
                  input_path: str=None,
-                 pose_score_threshold: float=0.2,
+                 pose_score_threshold: float=0.3,
                  internal_fps: int=12,
                  internal_frame_height: int=640
                  ) -> None:
@@ -72,11 +72,21 @@ class MovenetDAI:
         self.pd_input_length = 256
 
         if input_path:
-            self.img = cv2.imread(input_path)
-            self.video_fps = 25
-            self.img_h, self.img_w = self.img.shape[:2]
+            if input_path.endswith(".mp4"):
+                self.input_type = "video"
+                self.cap = cv2.VideoCapture(input_path)
+                self.video_fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+                self.img_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                self.img_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-            self.input_type= "image"
+                print("Video FPS:", self.video_fps)
+
+            elif input_path.endswith(".jpg") or input_path.endswith(".png"):
+                self.img = cv2.imread(input_path)
+                self.video_fps = 25
+                self.img_h, self.img_w = self.img.shape[:2]
+
+                self.input_type= "image"
         else:
 
             self.internal_fps = internal_fps
@@ -142,15 +152,15 @@ class MovenetDAI:
             x_centre = 0.5
             y_centre = 0.5
 
-            #hip_midpoint_y = (data[self.KEYPOINT_DICT['right_hip'] - 4 ][1] + data[self.KEYPOINT_DICT['left_hip'] - 4 ][1]) * 0.5
+            hip_midpoint_y = (data[self.KEYPOINT_DICT['right_hip'] - 4 ][1] + data[self.KEYPOINT_DICT['left_hip'] - 4 ][1]) * 0.5
             hip_midpoint_x = (data[self.KEYPOINT_DICT['right_hip'] - 4 ][0] + data[self.KEYPOINT_DICT['left_hip'] - 4 ][0]) * 0.5
             x_dis = hip_midpoint_x - x_centre
-            #y_dis = hip_midpoint_y - y_centre
+            y_dis = hip_midpoint_y - y_centre
 
             for idx, x_y in enumerate(data):
                 if x_y[0] != 0 and x_y[1] != 0:
                     data[idx][0] = x_y[0] - x_dis
-                    #data[idx][1] = x_y[1] - y_dis
+                    data[idx][1] = x_y[1] - y_dis
 
             return data 
         else:
@@ -162,7 +172,8 @@ class MovenetDAI:
                 [10,8],[8,2],[7,8],[1,7],[7,9],
                 [10,12],[9,11],[3,5],
                 [4,6],[2,1]]
-        
+        data[:,1] = 1-data[:,1] 
+
         expectedSize = (13,2)
         if data.shape == expectedSize:
             normFrame = np.full((frame.shape[0], frame.shape[0], 3), 25)
@@ -175,7 +186,7 @@ class MovenetDAI:
                     x_pos = int(data[idx][0] * self.img_w + frame.shape[1] * 0.5 )
                     y_pos = int(data[idx][1] * self.img_h)
                 lines.append([x_pos, y_pos])
-
+            
             newlines = [np.array([lines[point] for point in line]) for line in LINES_BODY if lines[line[0]][0] != 0 and lines[line[1]][1] != 0]
             cv2.polylines(frame, newlines, False, (180, 255, 90), 2, cv2.LINE_AA)
 
@@ -201,6 +212,8 @@ class MovenetDAI:
 
         expectedSize = (13,2)
         data = np.copy(kps)
+        data[:,1] = 1-data[:,1] 
+
         data[:,0] = data[:,0]*self.img_w
         data[:,1] = data[:,1]*self.img_h
         data = data.astype(np.int32)
@@ -411,8 +424,13 @@ class MovenetDAI:
             in_video = self.q_video.get()
             frame = in_video.getCvFrame()
 
-        elif self.input_type == "image":
-            frame = self.img.copy()
+        else:
+            if self.input_type == "image":
+                frame = self.img.copy()
+            else:
+                ok, frame = self.cap.read()
+                if not ok:
+                    return None, None
                         # Cropping of the video frame
             cropped = self._crop_and_resize(frame, self.crop_region)
             cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB).transpose(2,0,1)
@@ -448,6 +466,7 @@ class MovenetDAI:
         
         out_keypoints[:,0] /= self.img_w
         out_keypoints[:,1] /= self.img_h
+        out_keypoints[:,1] = 1-out_keypoints[:,1]
         return out_keypoints
 
 

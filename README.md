@@ -1,52 +1,39 @@
 # Fall Detection From MoveNet Pose Estimation with OAK-D Hardware
 LSTM based fall detection model with MoveNet pose estimation via OAK-D hardware and DepthAI.
 
+Latest Update: Trained with NTU-RGB Action Recognition Dataset.
+
 ## Demo
-![Demo](doc/img/demo.gif)
-Note: This demo was trained with self-generated dataset. The current trained weights for demo.py uses UR Fall Detection Dataset and may not match in average precision. Inferencing was delayed by approx. 1 second due to high memory consumption from screen recording application (OBS).
+![Demo](doc/img/lstmfall_sample_2763_08252019.gif)
+Normali
+Note: This demo was trained with NTU-RGB Action Recognition Dataset in attempt to increase robustness. The current trained weights for demo.py uses src\fall_detection\model_weights\ntu_weights.h5
 
-## Pipeline
-The pipeline is closely related to current HPE-based action recognition architectures. The fall detection pipeline utilizes the MoveNet skeletal-HPE, preprocesses the HPE data and passes the human pose inferences to an LSTM model that attempts to interpret 50 sequences of HPE joints (or “keypoints”) and distinguish fall and non-fall movements.
+Dataset: NTU-RGB Action Recognition (~ 55k samples, ~1000 of which are falls).
 
-The HPE MoveNet model receives the RGB input frames from the edge camera device “OAK-D” by Luxonis and computes the output of the model using the device’s integrated processor. This approach fosters privacy through the black-box nature of edge processing and the absence of identity from the two-dimensional joint outputs of the model. The pipeline extracts 50 sequences of HPE inferences, each encompassing 17 unique HPE joint positions, holding temporal data that can be leveraged by the LSTM to determine a fall. 
+## Cross Validation Results
+* Average accuracy score: 0.9953637242317199
+* Average Precision: 0.887873831329372
+* Average Recall: 0.8373728567276955
+* Average F1-score: 0.8579635847009552
+* Average AUC score: 0.9177247300260225
 
-![Pipeline](doc/img/draw.jpg) 
+CrossVal Params:
+* number of splits: 5
+* split type: stratKfold
+* min fall confidence - 0.5
+* random_state = 42
 
-Dataset: Self-generated using 50 fall, 50 non-fall movements.
-Model Validation Dataset: UR Fall Detection Dataset
+Model Params:
+* batch_size: 32
+* learning_rate: 0.0001
+* loss: binary cross entropy with class weights.
+
+## Future Work
+Further validation may be needed as dataset classes were heavily imbalanced. Future work may involve synthetic data by altering angles of joints by a few degrees or mirroring the skeleton along the vertical axis (left hand becomes right hand joint). Introducing samples of squats from NTU-RGB 120 in future will also ensure that model is able to distinguish between squats and falls better. Model also needs to know what an empty scene looks like.
 
 ## Normalization
-Normalisation algorithm involves moving the HPE skeleton to the centre of the frame to reduce bias inflicted by horizontal movements when training the LSTM network.
-![Normalization](doc/img/draw2.png)
-
-## Pre-Processing
-UR Fall Detection Dataset contained inconsistent amount of frames, this needed to be shrinked to 55 frames to fit the network. The algorithm used to shrink to 55 frames involved finding a range (start, stop, step) for an iterator to scan through for an even spread of frames while keeping the length of 55 total frames.
-![Data Preprocessing](doc/img/draw3.png)
-
-This algorithm is found in extract_pose_data.py:
-```py
-# numFrames is an arbitrary number of frames (more than 55) that needs to be shrinked to 55.
-# algorithm returns a tuple range which the length is always 55 with constant time complexity.
-
-iter_range = ()
-if numFrames == 55:
-    iter_range = (1, 56,1)
-else:
-    step = numFrames // 55
-    split = ((numFrames // step) - 55) // 2
-    iter_range = (split, numFrames - (numFrames - 55 * step) + split, step)
-```
-
-This tuple range can then be used to ensure the HPE skeletal-inferencing is only performed on 55 frames of a data sample:
-```py
-for j in range(iter_range[0],iter_range[1],iter_range[2]):
-    movenet.updateInputPath(file_path)
-    frame, data, _ = movenet.getFrameInference() # Runs MoveNet HPE on image frame
-    normalized = movenet.normalize(data) # Normalizes HPE data using above section's normalization method
-
-    # After this, the program saves the data of the normalized + flattened MoveNet HPE Inferences to a 
-    # numpy (.npy) file format for the LSTM network training
-```
+Initial filtering involved removing skeletons with Nan or zeroes and selecting one participant where multiple existed(by selecting skeletons with higher variance).
+Normalisation algorithm involves moving the HPE skeleton to the centre of the frame to reduce bias inflicted by horizontal and vertical movements when training the LSTM network.
 
 ## Install
 Install the python packages DepthAI, Opencv with the following command:
@@ -55,14 +42,12 @@ python3 -m pip install -r requirements.txt
 ```
 
 ## Retrieve Dataset
-To download UR Fall Detection Dataset, enter the following command using bash:
-```
-sh get_dataset.sh
-```
+NTU Data is From https://github.com/shahroudy/NTURGB-D
+Testing Data is From https://doi.org/10.1016/s0140-6736(12)61263-x
 
 # References
 * [MoveNet](https://www.tensorflow.org/hub/tutorials/movenet) - Ultra fast and accurate pose detection model, from 'TensorFlow'.
 * [depthai_movenet](https://github.com/geaxgx/depthai_movenet) - MoveNet Single Pose tracking on DepthAI, from 'geaxgx'.
-* [A Framework for Fall Detection Based on OpenPose Skeleton and LSTM/GRU Models](https://doi.org/10.3390/app11010329) - Lin, C.-B., et al
-* [UR Fall Detection Dataset](http://fenix.univ.rzeszow.pl/~mkepski/ds/uf.html) - Kwolek, B., & Kepski, M.
-
+* [A Framework for Fall Detection Based on OpenPose Skeleton and LSTM/GRU Models](https://doi.org/10.3390/app11010329) - Lin, C.B., et al
+* [NTU RGB Action Recognition](https://github.com/shahroudy/NTURGB-D) -  Shahroudy, A., et al
+* [Video capture of the circumstances of falls in elderly people residing in long-term care: an observational study](https://doi.org/10.1016/s0140-6736(12)61263-x) - Robinovitch, S.N., et al

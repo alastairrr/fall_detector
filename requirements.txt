@@ -3,3 +3,4 @@ depthai>=2.9
 matplotlib
 numpy
 tensorflow>=2.9.0
+scikit-learn

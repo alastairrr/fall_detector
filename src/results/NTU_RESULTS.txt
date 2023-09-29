@@ -1,0 +1,42 @@
+#   --------------------
+MODEL EVALUATION
+
+Precision: 0.5915032679738562
+Recall: 0.9783783783783784
+F1-score: 0.7372708757637476
+AUC score: 0.9834096441549743
+
+
+#   --------------------
+CROSS VALIDATION
+Time taken: around 30 hours :P
+
+# CrossVal Params:
+
+#   number of splits: 5
+#   split type: stratKfold
+#   min fall confidence - 0.5
+#   random_state = 42
+
+# Model Params:
+
+#   batch_size: 32
+#   learning_rate: 0.0001
+#   loss: binary cross entropy with class weights.
+#   epochs - 20
+
+#   --------------------
+
+# Outputs:
+
+#   Cross-validation Binary Accuracies: [0.9948186278343201, 0.9947272539138794, 0.9968181848526001, 0.9954545497894287, 0.9950000047683716]
+#   Average accuracy score: 0.9953637242317199
+
+#   --------------------
+
+#   Average Precision: 0.887873831329372
+#   Average Recall: 0.8373728567276955
+#   Average F1-score: 0.8579635847009552
+#   Average AUC score: 0.9177247300260225
+
+#   --------------------
