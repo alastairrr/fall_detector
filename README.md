@@ -10,7 +10,7 @@ Note: This demo was trained with NTU-RGB Action Recognition Dataset in attempt t
 
 Dataset: NTU-RGB Action Recognition (~ 55k samples, ~1000 of which are falls).
 
-## Cross Validation Results
+## Cross Validation Results (Fall vs Non Fall)
 * Average accuracy score: 0.9953637242317199
 * Average Precision: 0.887873831329372
 * Average Recall: 0.8373728567276955
@@ -32,7 +32,7 @@ Model Params:
 Further validation may be needed as dataset classes were heavily imbalanced. Future work may involve synthetic data by altering angles of joints by a few degrees or mirroring the skeleton along the vertical axis (left hand becomes right hand joint). Introducing samples of squats from NTU-RGB 120 in future will also ensure that model is able to distinguish between squats and falls better. Model also needs to know what an empty scene looks like.
 
 ## Normalization
-Initial filtering involved removing skeletons with Nan or zeroes and selecting one participant where multiple existed(by selecting skeletons with higher variance).
+Initial filtering involved removing skeletons with Nan or zeroes and selecting one participant where multiple existed(by selecting skeletons with higher variance). See src/ntu_preprocessing/preprocessing_ntu.py.
 Normalisation algorithm involves moving the HPE skeleton to the centre of the frame to reduce bias inflicted by horizontal and vertical movements when training the LSTM network.
 
 ## Install
